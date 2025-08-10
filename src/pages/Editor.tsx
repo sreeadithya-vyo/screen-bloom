@@ -6,7 +6,9 @@ import { Card } from "@/components/ui/card";
 import { toast } from "@/components/ui/sonner";
 import { Download, Maximize2, Minimize2, Wand2 } from "lucide-react";
 import jsPDF from "jspdf";
-
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 const defaultPayload = () => {
   try {
     const raw = localStorage.getItem("studioscript:last");
@@ -19,7 +21,8 @@ const Editor = () => {
   const initial = (location.state as any) || defaultPayload();
   const [text, setText] = useState<string>(initial?.screenplay || "");
   const [expanded, setExpanded] = useState(false);
-
+  const [isSettingsOpen, setSettingsOpen] = useState(false);
+  const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem("openrouter:key") || "");
   useEffect(() => {
     if (initial) localStorage.setItem("studioscript:last", JSON.stringify(initial));
   }, [initial]);
@@ -59,11 +62,16 @@ const Editor = () => {
     doc.save("screenplay.pdf");
   };
 
-  const regenerateBeat = () => {
-    setText((t) => t + "\n\nINT. INSERT - NIGHT\nA quick new beat adds texture to the moment.\nCUT TO:\n");
-    toast("Added a new beat. Tweak as needed.");
-  };
+const regenerateBeat = () => {
+  setText((t) => t + "\n\nINT. INSERT - NIGHT\nA quick new beat adds texture to the moment.\nCUT TO:\n");
+  toast("Added a new beat. Tweak as needed.");
+};
 
+const saveApiKey = () => {
+  localStorage.setItem("openrouter:key", apiKey.trim());
+  toast("OpenRouter API key saved.");
+  setSettingsOpen(false);
+};
   const toggleScale = () => {
     setExpanded((e) => !e);
     setText((t) => (expanded ? t.slice(0, Math.max(200, Math.floor(t.length * 0.9))) : t + "\n\n[Expanded content... add more dialogues and descriptions]") );
@@ -84,6 +92,25 @@ const Editor = () => {
             <Button variant="secondary" onClick={toggleScale}>
               {expanded ? <Minimize2 /> : <Maximize2 />} {expanded ? "Condense" : "Expand"}
             </Button>
+            <Dialog open={isSettingsOpen} onOpenChange={setSettingsOpen}>
+              <DialogTrigger asChild>
+                <Button variant="secondary">AI Settings</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>AI Settings</DialogTitle>
+                  <DialogDescription>Store your OpenRouter API key securely in this browser.</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-2">
+                  <Label htmlFor="openrouter-key">OpenRouter API Key</Label>
+                  <Input id="openrouter-key" type="password" placeholder="sk-or-..." value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="secondary" onClick={() => setSettingsOpen(false)}>Cancel</Button>
+                  <Button variant="hero" onClick={saveApiKey}>Save</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
           <textarea
             className="min-h-[60vh] w-full resize-y rounded-md border bg-background p-4 font-mono-screenplay"

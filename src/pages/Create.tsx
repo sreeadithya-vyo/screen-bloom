@@ -8,21 +8,44 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { generateScript, type Genre, type Tone } from "@/utils/scriptGenerator";
-
+import { toast } from "@/components/ui/sonner";
+import { generateScriptAI } from "@/utils/ai";
 const Create = () => {
   const [summary, setSummary] = useState("");
   const [duration, setDuration] = useState<60 | 90 | 120 | 150>(90);
   const [tone, setTone] = useState<Tone>("Serious");
   const [genre, setGenre] = useState<Genre>("Drama");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+const onSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  try {
+    const apiKey = localStorage.getItem("openrouter:key")?.trim();
+    let screenplay: string;
+
+    if (apiKey) {
+      screenplay = await generateScriptAI({ summary, duration, tone, genre }, apiKey);
+    } else {
+      toast("Using offline demo generator. Add your OpenRouter key in Editor > AI Settings.");
+      screenplay = generateScript({ summary, duration, tone, genre });
+    }
+
+    const payload = { screenplay, meta: { summary, duration, tone, genre } };
+    localStorage.setItem("studioscript:last", JSON.stringify(payload));
+    navigate("/editor", { state: payload });
+  } catch (err) {
+    console.error(err);
+    toast("Generation failed. Falling back to demo.");
     const screenplay = generateScript({ summary, duration, tone, genre });
     const payload = { screenplay, meta: { summary, duration, tone, genre } };
     localStorage.setItem("studioscript:last", JSON.stringify(payload));
     navigate("/editor", { state: payload });
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <main className="container py-10">
@@ -84,7 +107,7 @@ const Create = () => {
             </div>
 
             <div className="flex justify-end">
-              <Button type="submit" variant="hero" size="xl" className="shadow-gold">Generate Full Script</Button>
+              <Button type="submit" variant="hero" size="xl" className="shadow-gold" disabled={loading}>Generate Full Script</Button>
             </div>
           </form>
         </CardContent>
