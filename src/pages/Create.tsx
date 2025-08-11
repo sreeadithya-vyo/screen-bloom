@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { generateScript, type Genre, type Tone } from "@/utils/scriptGenerator";
 import { toast } from "@/components/ui/sonner";
 import { generateScriptAI } from "@/utils/ai";
+import { supabase } from "@/integrations/supabase/client";
 const Create = () => {
   const [summary, setSummary] = useState("");
   const [duration, setDuration] = useState<60 | 90 | 120 | 150>(90);
@@ -22,26 +23,41 @@ const onSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setLoading(true);
   try {
-    const apiKey = localStorage.getItem("openrouter:key")?.trim();
-    let screenplay: string;
+    let screenplay: string | undefined;
 
-    if (apiKey) {
-      screenplay = await generateScriptAI({ summary, duration, tone, genre }, apiKey);
-    } else {
-      toast("Using offline demo generator. Add your OpenRouter key in Editor > AI Settings.");
-      screenplay = generateScript({ summary, duration, tone, genre });
-    }
+    // Prefer secure server-side generation via Supabase Edge Function
+    const { data, error } = await supabase.functions.invoke('generate-script', {
+      body: { summary, duration, tone, genre },
+    });
+
+    if (error) throw error;
+    screenplay = (data as any)?.screenplay;
+    if (!screenplay) throw new Error('No screenplay returned');
 
     const payload = { screenplay, meta: { summary, duration, tone, genre } };
-    localStorage.setItem("studioscript:last", JSON.stringify(payload));
-    navigate("/editor", { state: payload });
+    localStorage.setItem('studioscript:last', JSON.stringify(payload));
+    navigate('/editor', { state: payload });
   } catch (err) {
     console.error(err);
-    toast("Generation failed. Falling back to demo.");
+    // Fallback: use browser-stored OpenRouter key if available
+    const apiKey = localStorage.getItem('openrouter:key')?.trim();
+    if (apiKey) {
+      try {
+        const screenplay = await generateScriptAI({ summary, duration, tone, genre }, apiKey);
+        const payload = { screenplay, meta: { summary, duration, tone, genre } };
+        localStorage.setItem('studioscript:last', JSON.stringify(payload));
+        navigate('/editor', { state: payload });
+        return;
+      } catch (inner) {
+        console.error('OpenRouter client fallback failed', inner);
+      }
+    }
+    // Final fallback: offline demo generator
+    toast('Generation failed. Falling back to demo.');
     const screenplay = generateScript({ summary, duration, tone, genre });
     const payload = { screenplay, meta: { summary, duration, tone, genre } };
-    localStorage.setItem("studioscript:last", JSON.stringify(payload));
-    navigate("/editor", { state: payload });
+    localStorage.setItem('studioscript:last', JSON.stringify(payload));
+    navigate('/editor', { state: payload });
   } finally {
     setLoading(false);
   }
