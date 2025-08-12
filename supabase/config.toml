@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.generate-prompts]
 verify_jwt = false
+
+[functions.generate-ads-script]
+verify_jwt = false

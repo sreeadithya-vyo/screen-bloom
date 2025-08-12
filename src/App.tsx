@@ -12,6 +12,9 @@ import Pricing from "./pages/Pricing";
 import Prompts from "./pages/Prompts";
 import Navbar from "./components/layout/Navbar";
 import Footer from "./components/layout/Footer";
+import AdsCreate from "./pages/AdsCreate";
+import AdsEditor from "./pages/AdsEditor";
+import AdsPrompts from "./pages/AdsPrompts";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +32,9 @@ const App = () => (
             <Route path="/editor" element={<Editor />} />
             <Route path="/prompts" element={<Prompts />} />
             <Route path="/pricing" element={<Pricing />} />
+            <Route path="/ads/create" element={<AdsCreate />} />
+            <Route path="/ads/editor" element={<AdsEditor />} />
+            <Route path="/ads/prompts" element={<AdsPrompts />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
