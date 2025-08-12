@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import Create from "./pages/Create";
 import Editor from "./pages/Editor";
 import Pricing from "./pages/Pricing";
+import Prompts from "./pages/Prompts";
 import Navbar from "./components/layout/Navbar";
 import Footer from "./components/layout/Footer";
 
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/create" element={<Create />} />
             <Route path="/editor" element={<Editor />} />
+            <Route path="/prompts" element={<Prompts />} />
             <Route path="/pricing" element={<Pricing />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

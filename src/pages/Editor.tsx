@@ -1,10 +1,10 @@
 import { Helmet } from "react-helmet-async";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "@/components/ui/sonner";
-import { Download, Maximize2, Minimize2, Wand2 } from "lucide-react";
+import { Download, Maximize2, Minimize2, Wand2, List } from "lucide-react";
 import jsPDF from "jspdf";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ const defaultPayload = () => {
 
 const Editor = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const initial = (location.state as any) || defaultPayload();
   const [text, setText] = useState<string>(initial?.screenplay || "");
   const [expanded, setExpanded] = useState(false);
@@ -74,7 +75,15 @@ const saveApiKey = () => {
 };
   const toggleScale = () => {
     setExpanded((e) => !e);
-    setText((t) => (expanded ? t.slice(0, Math.max(200, Math.floor(t.length * 0.9))) : t + "\n\n[Expanded content... add more dialogues and descriptions]") );
+    setText((t) => (expanded ? t.slice(0, Math.max(200, Math.floor(t.length * 0.9))) : t + "\n\n[Expanded content... add more dialogues and descriptions]"));
+  };
+
+  const gotoPrompts = () => {
+    if (!text.trim()) {
+      toast("Please add screenplay text first.");
+      return;
+    }
+    navigate("/prompts", { state: { screenplay: text } });
   };
 
   return (
@@ -92,6 +101,7 @@ const saveApiKey = () => {
             <Button variant="secondary" onClick={toggleScale}>
               {expanded ? <Minimize2 /> : <Maximize2 />} {expanded ? "Condense" : "Expand"}
             </Button>
+            <Button variant="hero" onClick={gotoPrompts}><List /> Generate Scene Prompts</Button>
             <Dialog open={isSettingsOpen} onOpenChange={setSettingsOpen}>
               <DialogTrigger asChild>
                 <Button variant="secondary">AI Settings</Button>
