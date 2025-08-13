@@ -4,6 +4,7 @@ import { useLocation, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 interface ScenePrompt {
   scene_number: number;
@@ -11,12 +12,18 @@ interface ScenePrompt {
   prompt: string;
 }
 
+interface SceneWithImage extends ScenePrompt {
+  generatedImage?: string;
+  isGeneratingImage?: boolean;
+}
+
 const Prompts = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const screenplay: string | undefined = (location.state as any)?.screenplay;
 
-  const [scenes, setScenes] = useState<ScenePrompt[] | null>(null);
+  const [scenes, setScenes] = useState<SceneWithImage[] | null>(null);
   const [raw, setRaw] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(!!screenplay);
@@ -32,7 +39,7 @@ const Prompts = () => {
         if (error) throw error;
         if (cancelled) return;
         if (data?.scenes && Array.isArray(data.scenes)) {
-          setScenes(data.scenes as ScenePrompt[]);
+          setScenes(data.scenes as SceneWithImage[]);
         } else if (typeof data?.raw === "string") {
           setRaw(data.raw);
         } else {
@@ -55,6 +62,49 @@ const Prompts = () => {
       .map((s) => `Scene ${s.scene_number} - ${s.title}\n\n${s.prompt}`)
       .join("\n\n---\n\n");
   }, [scenes]);
+
+  const generateImage = async (sceneNumber: number, prompt: string) => {
+    setScenes(prev => prev?.map(scene => 
+      scene.scene_number === sceneNumber 
+        ? { ...scene, isGeneratingImage: true }
+        : scene
+    ) || null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-image", {
+        body: { prompt },
+      });
+
+      if (error) throw error;
+
+      setScenes(prev => prev?.map(scene => 
+        scene.scene_number === sceneNumber 
+          ? { 
+              ...scene, 
+              generatedImage: `data:image/png;base64,${data.image}`,
+              isGeneratingImage: false 
+            }
+          : scene
+      ) || null);
+
+      toast({
+        title: "Image generated successfully",
+        description: `Scene ${sceneNumber} image has been created.`,
+      });
+    } catch (e: any) {
+      setScenes(prev => prev?.map(scene => 
+        scene.scene_number === sceneNumber 
+          ? { ...scene, isGeneratingImage: false }
+          : scene
+      ) || null);
+
+      toast({
+        title: "Failed to generate image",
+        description: e?.message || "An error occurred while generating the image.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (!screenplay) {
     return (
@@ -107,7 +157,27 @@ const Prompts = () => {
             {scenes.map((s) => (
               <article key={s.scene_number} className="rounded-lg border bg-card p-6 shadow-sm">
                 <h2 className="font-semibold mb-2">Scene {s.scene_number}: {s.title}</h2>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed">{s.prompt}</p>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed mb-4">{s.prompt}</p>
+                
+                {s.generatedImage && (
+                  <div className="mb-4">
+                    <img 
+                      src={s.generatedImage} 
+                      alt={`Generated image for scene ${s.scene_number}`}
+                      className="w-full max-w-md rounded-lg shadow-sm"
+                    />
+                  </div>
+                )}
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => generateImage(s.scene_number, s.prompt)}
+                  disabled={s.isGeneratingImage}
+                  className="mt-2"
+                >
+                  {s.isGeneratingImage ? "Generating..." : "Generate Image"}
+                </Button>
               </article>
             ))}
             <div className="flex gap-2">
